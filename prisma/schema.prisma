@@ -1,0 +1,225 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  emailVerified DateTime?
+  name          String?
+  image         String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  accounts      Account[]
+  preferences   UserPreferences?
+  targets       Target[]
+  alerts        Alert[]
+  replies       Reply[]
+  learningSignals LearningSignal[]
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@index([userId])
+}
+
+model UserPreferences {
+  id                    String   @id @default(cuid())
+  userId                String   @unique
+  maxAlertsPerDay       Int      @default(10)
+  minPredictedImpressions Int    @default(1000)
+  timeWindowStart       Int      @default(9)
+  timeWindowEnd         Int      @default(21)
+  preferredReplyStyles  String[] @default([])
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Target {
+  id          String   @id @default(cuid())
+  userId      String
+  type        TargetType
+  value       String
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([type, value])
+}
+
+enum TargetType {
+  ACCOUNT
+  KEYWORD
+  LIST
+}
+
+model CandidateTweet {
+  id                String   @id @default(cuid())
+  tweetId           String   @unique
+  authorId          String
+  authorUsername    String
+  authorName        String
+  authorFollowers   Int
+  authorImage       String?
+  content           String   @db.Text
+  createdAt         DateTime
+  fetchedAt         DateTime @default(now())
+  isThread          Boolean  @default(false)
+  threadPosition    Int?
+
+  scores            Score[]
+  alerts            Alert[]
+
+  @@index([tweetId])
+  @@index([authorId])
+  @@index([createdAt])
+}
+
+model Score {
+  id                    String   @id @default(cuid())
+  candidateTweetId      String
+
+  velocityScore         Float
+  velocityRaw           Json
+
+  saturationScore       Float
+  saturationRaw         Json
+
+  authorFatigueScore    Float
+  authorFatigueRaw      Json
+
+  audienceOverlapScore  Float
+  audienceOverlapRaw    Json
+
+  replyFitScore         Float
+  replyFitRaw           Json
+
+  finalScore            Float
+
+  computedAt            DateTime @default(now())
+
+  candidateTweet CandidateTweet @relation(fields: [candidateTweetId], references: [id], onDelete: Cascade)
+
+  @@index([candidateTweetId])
+  @@index([finalScore])
+}
+
+model Alert {
+  id                String   @id @default(cuid())
+  userId            String
+  candidateTweetId  String
+  score             Float
+  reason            String   @db.Text
+  dismissed         Boolean  @default(false)
+  viewed            Boolean  @default(false)
+  createdAt         DateTime @default(now())
+
+  user           User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  candidateTweet CandidateTweet @relation(fields: [candidateTweetId], references: [id], onDelete: Cascade)
+
+  replies        Reply[]
+
+  @@index([userId, createdAt])
+  @@index([candidateTweetId])
+}
+
+model Reply {
+  id                String   @id @default(cuid())
+  userId            String
+  alertId           String
+  tweetId           String
+  replyTweetId      String?
+  content           String   @db.Text
+  strategy          String
+  postedAt          DateTime @default(now())
+
+  user              User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  alert             Alert @relation(fields: [alertId], references: [id], onDelete: Cascade)
+
+  prediction        Prediction?
+  outcome           Outcome?
+
+  @@index([userId])
+  @@index([alertId])
+  @@index([tweetId])
+}
+
+model Prediction {
+  id                      String   @id @default(cuid())
+  replyId                 String   @unique
+
+  expectedImpressionsMin  Int
+  expectedImpressionsMax  Int
+
+  probAuthorEngagement    Float
+  probProfileClicks       Float
+  probFollows             Float
+
+  explanation             String   @db.Text
+
+  createdAt               DateTime @default(now())
+
+  reply Reply @relation(fields: [replyId], references: [id], onDelete: Cascade)
+}
+
+model Outcome {
+  id                  String   @id @default(cuid())
+  replyId             String   @unique
+
+  actualImpressions   Int
+  authorEngaged       Boolean
+  profileClicks       Int
+  follows             Int
+
+  label               OutcomeLabel
+  feedback            String?  @db.Text
+
+  measuredAt          DateTime @default(now())
+
+  reply Reply @relation(fields: [replyId], references: [id], onDelete: Cascade)
+}
+
+enum OutcomeLabel {
+  RIGHT
+  SATURATED
+  BAD_FIT
+}
+
+model LearningSignal {
+  id                String   @id @default(cuid())
+  userId            String
+  signalType        String
+  signalData        Json
+  confidence        Float
+  createdAt         DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, signalType])
+}
