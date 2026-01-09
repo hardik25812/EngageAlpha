@@ -4,6 +4,7 @@
 
 @layer base {
   :root {
+    /* Core colors */
     --background: 10 10 11;
     --foreground: 229 229 230;
     --card: 20 20 22;
@@ -24,6 +25,38 @@
     --input: 31 31 35;
     --ring: 14 165 233;
     --radius: 0.5rem;
+
+    /* Surface levels (depth) */
+    --surface-0: 9 9 11;
+    --surface-1: 15 15 18;
+    --surface-2: 24 24 27;
+    --surface-3: 39 39 42;
+
+    /* Gradient accents */
+    --gradient-primary: linear-gradient(135deg, #0ea5e9 0%, #8b5cf6 100%);
+    --gradient-success: linear-gradient(135deg, #10b981 0%, #34d399 100%);
+    --gradient-warning: linear-gradient(135deg, #f59e0b 0%, #fbbf24 100%);
+    --gradient-danger: linear-gradient(135deg, #ef4444 0%, #f87171 100%);
+
+    /* Glow effects */
+    --glow-primary: 0 0 20px rgba(14, 165, 233, 0.3);
+    --glow-success: 0 0 20px rgba(16, 185, 129, 0.3);
+    --glow-warning: 0 0 20px rgba(245, 158, 11, 0.3);
+    --glow-danger: 0 0 20px rgba(239, 68, 68, 0.3);
+
+    /* Revive badge purple */
+    --revive: 139 92 246;
+    --glow-revive: 0 0 20px rgba(139, 92, 246, 0.4);
+
+    /* Status colors */
+    --success: 16 185 129;
+    --warning: 245 158 11;
+    --danger: 239 68 68;
+
+    /* Urgency colors */
+    --urgency-critical: 239 68 68;
+    --urgency-high: 245 158 11;
+    --urgency-medium: 14 165 233;
   }
 }
 
@@ -35,10 +68,164 @@
     @apply bg-background text-foreground;
     font-feature-settings: "rlig" 1, "calt" 1;
   }
+
+  /* Tabular numbers for scores and metrics */
+  .tabular-nums {
+    font-variant-numeric: tabular-nums;
+  }
 }
 
 @layer utilities {
   .text-balance {
     text-wrap: balance;
+  }
+
+  /* Gradient text */
+  .gradient-text {
+    background: var(--gradient-primary);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  /* Glow effects */
+  .glow-primary {
+    box-shadow: var(--glow-primary);
+  }
+  .glow-success {
+    box-shadow: var(--glow-success);
+  }
+  .glow-warning {
+    box-shadow: var(--glow-warning);
+  }
+  .glow-danger {
+    box-shadow: var(--glow-danger);
+  }
+  .glow-revive {
+    box-shadow: var(--glow-revive);
+  }
+
+  /* Gradient backgrounds */
+  .bg-gradient-primary {
+    background: var(--gradient-primary);
+  }
+  .bg-gradient-success {
+    background: var(--gradient-success);
+  }
+  .bg-gradient-warning {
+    background: var(--gradient-warning);
+  }
+  .bg-gradient-danger {
+    background: var(--gradient-danger);
+  }
+
+  /* Score color tiers */
+  .score-exceptional {
+    color: rgb(var(--primary));
+  }
+  .score-good {
+    color: rgb(var(--success));
+  }
+  .score-medium {
+    color: rgb(var(--warning));
+  }
+  .score-low {
+    color: rgb(var(--muted-foreground));
+  }
+
+  /* Pulse animation for urgency */
+  .pulse-urgency {
+    animation: pulse-urgency 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  }
+
+  /* Smooth scrollbar */
+  .scrollbar-thin::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  .scrollbar-thin::-webkit-scrollbar-track {
+    background: rgb(var(--surface-1));
+    border-radius: 3px;
+  }
+  .scrollbar-thin::-webkit-scrollbar-thumb {
+    background: rgb(var(--surface-3));
+    border-radius: 3px;
+  }
+  .scrollbar-thin::-webkit-scrollbar-thumb:hover {
+    background: rgb(var(--muted-foreground));
+  }
+}
+
+@layer components {
+  /* Trading terminal card style */
+  .terminal-card {
+    @apply bg-surface-1 border border-surface-3 rounded-lg;
+    @apply transition-all duration-200;
+  }
+  .terminal-card:hover {
+    @apply border-accent/50;
+    box-shadow: var(--glow-primary);
+  }
+
+  /* Reviveable card variant */
+  .terminal-card-revive {
+    @apply bg-surface-1 border border-revive/30 rounded-lg;
+    @apply transition-all duration-200;
+  }
+  .terminal-card-revive:hover {
+    @apply border-revive/70;
+    box-shadow: var(--glow-revive);
+  }
+
+  /* Score badge styles */
+  .score-badge {
+    @apply inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold tabular-nums;
+  }
+  .score-badge-exceptional {
+    @apply bg-accent/20 text-accent;
+  }
+  .score-badge-good {
+    @apply bg-success/20 text-success;
+  }
+  .score-badge-medium {
+    @apply bg-warning/20 text-warning;
+  }
+  .score-badge-low {
+    @apply bg-surface-3 text-foreground-muted;
+  }
+
+  /* Metric display */
+  .metric-value {
+    @apply text-2xl font-bold tabular-nums;
+  }
+  .metric-label {
+    @apply text-xs text-foreground-muted uppercase tracking-wide;
+  }
+}
+
+@keyframes pulse-urgency {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.6;
+  }
+}
+
+@keyframes glow {
+  0% {
+    box-shadow: 0 0 5px rgba(14, 165, 233, 0.2);
+  }
+  100% {
+    box-shadow: 0 0 20px rgba(14, 165, 233, 0.4);
+  }
+}
+
+@keyframes glow-revive {
+  0% {
+    box-shadow: 0 0 5px rgba(139, 92, 246, 0.2);
+  }
+  100% {
+    box-shadow: 0 0 20px rgba(139, 92, 246, 0.5);
   }
 }

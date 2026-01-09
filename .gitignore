@@ -35,3 +35,6 @@ next-env.d.ts
 
 # prisma
 prisma/.env
+
+# Auto Claude data directory
+.auto-claude/

@@ -16,12 +16,14 @@ model User {
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
-  accounts      Account[]
-  preferences   UserPreferences?
-  targets       Target[]
-  alerts        Alert[]
-  replies       Reply[]
+  accounts        Account[]
+  preferences     UserPreferences?
+  targets         Target[]
+  alerts          Alert[]
+  replies         Reply[]
   learningSignals LearningSignal[]
+  smartAlerts     SmartAlert[]
+  learning        UserLearning?
 }
 
 model Account {
@@ -79,6 +81,27 @@ enum TargetType {
   LIST
 }
 
+enum DecayPhase {
+  GROWTH
+  PEAK
+  DECAY
+  FLATLINE
+}
+
+enum AlertType {
+  REPLY_NOW
+  REVIVE_SIGNAL
+  WINDOW_CLOSING
+  AUTHOR_ACTIVE
+  VELOCITY_SPIKE
+}
+
+enum AlertUrgency {
+  CRITICAL
+  HIGH
+  MEDIUM
+}
+
 model CandidateTweet {
   id                String   @id @default(cuid())
   tweetId           String   @unique
@@ -93,8 +116,11 @@ model CandidateTweet {
   isThread          Boolean  @default(false)
   threadPosition    Int?
 
-  scores            Score[]
-  alerts            Alert[]
+  scores              Score[]
+  alerts              Alert[]
+  attentionDecay      AttentionDecay?
+  engagementSnapshots EngagementSnapshot[]
+  smartAlerts         SmartAlert[]
 
   @@index([tweetId])
   @@index([authorId])
@@ -222,4 +248,105 @@ model LearningSignal {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, signalType])
+}
+
+// ============================================
+// ATTENTION DECAY INTELLIGENCE MODELS
+// ============================================
+
+model AttentionDecay {
+  id                String     @id @default(cuid())
+  candidateTweetId  String     @unique
+
+  halfLife          Int        // minutes until engagement halves
+  activeLifespan    Int        // minutes until flatline
+  reviveProbability Float      // 0-100 percentage
+  decayVelocity     Float      // rate of engagement drop per minute
+
+  currentPhase      DecayPhase @default(GROWTH)
+
+  reviveWindowStart DateTime?
+  reviveWindowEnd   DateTime?
+
+  engagementHistory Json       // Array of {timestamp, likes, retweets, replies, impressions}
+
+  computedAt        DateTime   @default(now())
+  updatedAt         DateTime   @updatedAt
+
+  candidateTweet    CandidateTweet @relation(fields: [candidateTweetId], references: [id], onDelete: Cascade)
+
+  @@index([currentPhase])
+  @@index([reviveProbability])
+}
+
+model SmartAlert {
+  id                String       @id @default(cuid())
+  userId            String
+  candidateTweetId  String?
+
+  type              AlertType
+  urgency           AlertUrgency
+
+  title             String
+  message           String       @db.Text
+
+  optimalWindow     Int?         // minutes remaining for optimal reply
+  closingWindow     Int?         // minutes until window closes
+
+  dismissed         Boolean      @default(false)
+  actedOn           Boolean      @default(false)
+
+  createdAt         DateTime     @default(now())
+  expiresAt         DateTime?
+
+  user              User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  candidateTweet    CandidateTweet? @relation(fields: [candidateTweetId], references: [id], onDelete: SetNull)
+
+  @@index([userId, dismissed])
+  @@index([type])
+  @@index([urgency])
+  @@index([createdAt])
+}
+
+model EngagementSnapshot {
+  id                String   @id @default(cuid())
+  candidateTweetId  String
+
+  likes             Int
+  retweets          Int
+  replies           Int
+  quotes            Int      @default(0)
+  impressions       Int?
+
+  capturedAt        DateTime @default(now())
+
+  candidateTweet    CandidateTweet @relation(fields: [candidateTweetId], references: [id], onDelete: Cascade)
+
+  @@index([candidateTweetId, capturedAt])
+  @@index([capturedAt])
+}
+
+model UserLearning {
+  id                  String   @id @default(cuid())
+  userId              String   @unique
+
+  // Best performing patterns (JSON arrays)
+  bestAuthors         Json     @default("[]") // [{authorId, authorUsername, conversionRate, sampleSize}]
+  bestTopics          Json     @default("[]") // [{topic, successRate, avgImpressions, sampleSize}]
+  bestReplyStyles     Json     @default("[]") // [{style, avgImpressions, avgFollows, sampleSize}]
+  bestPostingHours    Json     @default("[]") // [{hour, successRate, sampleSize}]
+
+  // Attention decay patterns learned
+  avgHalfLife         Float?   // average half-life observed for successful replies
+  avgRevivalSuccess   Float?   // average revival success rate
+
+  // Overall stats
+  totalReplies        Int      @default(0)
+  successfulReplies   Int      @default(0)
+  avgImpressionsGained Int     @default(0)
+
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  user                User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }

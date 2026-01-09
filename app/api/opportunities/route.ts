@@ -31,7 +31,27 @@ export async function GET(request: Request) {
       },
     })
 
-    const formattedOpportunities = opportunities
+    interface OppScore {
+      finalScore: number
+      velocityScore: number
+      saturationScore: number
+      velocityRaw: unknown
+      saturationRaw: unknown
+    }
+    
+    interface OppWithScores {
+      id: string
+      tweetId: string
+      authorName: string
+      authorUsername: string
+      authorFollowers: number
+      authorImage: string | null
+      content: string
+      createdAt: Date
+      scores: OppScore[]
+    }
+    
+    const formattedOpportunities = (opportunities as OppWithScores[])
       .filter((opp) => opp.scores.length > 0)
       .map((opp) => ({
         id: opp.id,
