@@ -25,20 +25,20 @@ export async function POST(request: NextRequest) {
     }
 
     // Verify alert belongs to user
-    const { data: alert } = await supabase
+    const { data: alert, error: alertError } = await supabase
       .from('smart_alerts')
       .select('*')
       .eq('id', alertId)
       .single()
 
-    if (!alert) {
+    if (alertError || !alert) {
       return NextResponse.json(
         { error: 'Alert not found' },
         { status: 404 }
       )
     }
 
-    if (alert.user_id !== user.id) {
+    if ((alert as unknown as { user_id: string }).user_id !== user.id) {
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 403 }

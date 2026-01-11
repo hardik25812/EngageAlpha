@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { Activity, Rss, Trophy, BookOpen, Zap } from "lucide-react"
+import { Activity, Rss, Trophy, BookOpen, Zap, Settings } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 const navigation = [
@@ -11,6 +11,7 @@ const navigation = [
   { name: "Wins", href: "/wins", icon: Trophy },
   { name: "Learn", href: "/learn", icon: BookOpen },
   { name: "Upgrade", href: "/upgrade", icon: Zap },
+  { name: "Settings", href: "/settings", icon: Settings },
 ]
 
 export function Navigation() {

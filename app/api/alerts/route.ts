@@ -29,14 +29,14 @@ export async function GET(request: NextRequest) {
       alerts.map(async (alert) => {
         if (!alert.candidateTweetId) return alert
 
-        const { data: tweet } = await supabase2
+        const { data: tweet } = await (supabase2
           .from('candidate_tweets')
           .select(`
             *,
             scores (
               *
             )
-          `)
+          `) as any)
           .eq('id', alert.candidateTweetId)
           .single()
 
@@ -95,18 +95,18 @@ export async function POST(request: NextRequest) {
     }
 
     // Get the opportunity
-    const { data: tweet } = await supabase
+    const { data: tweet } = await (supabase
       .from('candidate_tweets')
       .select(`
         *,
         scores (
           *
         )
-      `)
+      `) as any)
       .eq('id', candidateTweetId)
       .single()
 
-    const latestScore = tweet?.scores?.sort((a: any, b: any) => 
+    const latestScore = (tweet as any)?.scores?.sort((a: any, b: any) => 
       new Date(b.computed_at).getTime() - new Date(a.computed_at).getTime()
     )[0]
 

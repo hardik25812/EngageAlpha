@@ -9,22 +9,13 @@ import {
 // Get user's learning data
 export async function GET(request: NextRequest) {
   try {
-    const session = await getServerSession()
-    if (!session?.user?.email) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      )
-    }
-
-    const user = await prisma.user.findUnique({
-      where: { email: session.user.email },
-    })
+    const supabase = await createRouteClient()
+    const { data: { user } } = await supabase.auth.getUser()
 
     if (!user) {
       return NextResponse.json(
-        { error: 'User not found' },
-        { status: 404 }
+        { error: 'Unauthorized' },
+        { status: 401 }
       )
     }
 
@@ -58,22 +49,13 @@ export async function GET(request: NextRequest) {
 // Trigger learning update from a specific reply outcome
 export async function POST(request: NextRequest) {
   try {
-    const session = await getServerSession()
-    if (!session?.user?.email) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      )
-    }
-
-    const user = await prisma.user.findUnique({
-      where: { email: session.user.email },
-    })
+    const supabase = await createRouteClient()
+    const { data: { user } } = await supabase.auth.getUser()
 
     if (!user) {
       return NextResponse.json(
-        { error: 'User not found' },
-        { status: 404 }
+        { error: 'Unauthorized' },
+        { status: 401 }
       )
     }
 
@@ -82,26 +64,27 @@ export async function POST(request: NextRequest) {
 
     if (replyId) {
       // Update learning from specific reply
-      const reply = await prisma.reply.findUnique({
-        where: { id: replyId },
-        include: { outcome: true },
-      })
+      const { data: reply, error } = await (supabase
+        .from('replies')
+        .select('*, outcomes(*)')
+        .eq('id', replyId)
+        .single() as any)
 
-      if (!reply) {
+      if (error || !reply) {
         return NextResponse.json(
           { error: 'Reply not found' },
           { status: 404 }
         )
       }
 
-      if (reply.userId !== user.id) {
+      if (reply.user_id !== user.id) {
         return NextResponse.json(
           { error: 'Unauthorized' },
           { status: 403 }
         )
       }
 
-      if (!reply.outcome) {
+      if (!reply.outcomes) {
         return NextResponse.json(
           { error: 'Reply has no outcome data yet' },
           { status: 400 }
@@ -118,16 +101,14 @@ export async function POST(request: NextRequest) {
     }
 
     // Bulk update from all replies with outcomes
-    const repliesWithOutcomes = await prisma.reply.findMany({
-      where: {
-        userId: user.id,
-        outcome: { isNot: null },
-      },
-      orderBy: { postedAt: 'asc' },
-      take: 100, // Process last 100 for performance
-    })
+    const { data: repliesWithOutcomes } = await (supabase
+      .from('replies')
+      .select('id') as any)
+      .eq('user_id', user.id)
+      .order('posted_at', { ascending: true })
+      .limit(100)
 
-    if (repliesWithOutcomes.length === 0) {
+    if (!repliesWithOutcomes || repliesWithOutcomes.length === 0) {
       return NextResponse.json({
         updated: false,
         message: 'No replies with outcomes found',

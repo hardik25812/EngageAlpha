@@ -1,5 +1,6 @@
 "use client"
 
+import { useState } from "react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -7,9 +8,10 @@ import { ScoreRing } from "@/components/ui/score-ring"
 import { ReviveableBadge } from "@/components/ui/reviveable-badge"
 import { UrgencyTimer } from "@/components/ui/urgency-timer"
 import { SaturationMeter } from "@/components/ui/saturation-meter"
+import { AIReplyComposer } from "@/components/ai/ai-reply-composer"
 import { formatNumber, formatTimeAgo, cn } from "@/lib/utils"
-import { TrendingUp, Users, MessageSquare, Eye, Clock, Zap, Sparkles, Target, Brain, ArrowUp, ArrowDown, Minus } from "lucide-react"
-import { motion } from "framer-motion"
+import { TrendingUp, Users, MessageSquare, Eye, Clock, Zap, Sparkles, Target, Brain, ArrowUp, ArrowDown, Minus, Wand2 } from "lucide-react"
+import { motion, AnimatePresence } from "framer-motion"
 import type { DecayPhase } from "@/types"
 
 interface OpportunitySidePanelProps {
@@ -61,6 +63,16 @@ export function OpportunitySidePanel({
   onReply,
   onViewDecay,
 }: OpportunitySidePanelProps) {
+  const [showAIComposer, setShowAIComposer] = useState(false)
+  const [selectedReply, setSelectedReply] = useState<string>("")
+
+  const handleAIReplySelect = (reply: string) => {
+    setSelectedReply(reply)
+    // Copy to clipboard
+    navigator.clipboard.writeText(reply)
+    // Could trigger a toast here
+  }
+
   const getTrendIcon = (trend?: string) => {
     switch (trend) {
       case 'accelerating': return <ArrowUp className="h-3 w-3 text-success" />
@@ -279,21 +291,75 @@ export function OpportunitySidePanel({
             <p className="text-sm text-foreground-muted leading-relaxed">{data.explanation}</p>
           </div>
 
-          {/* Suggested Reply Angles */}
-          <div>
-            <h4 className="mb-3 text-sm font-semibold text-foreground">Suggested Reply Angles</h4>
-            <div className="grid grid-cols-3 gap-2">
-              {["Value add", "Share credibility", "Contrarian take"].map((angle) => (
-                <motion.div
-                  key={angle}
-                  whileHover={{ scale: 1.02 }}
-                  className="rounded-lg border border-surface-3 bg-surface-1 p-3 text-center text-sm text-foreground-muted cursor-pointer hover:border-accent/50 hover:text-foreground transition-colors"
-                >
-                  {angle}
-                </motion.div>
-              ))}
+          {/* AI Reply Composer Toggle */}
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <h4 className="text-sm font-semibold text-foreground">Craft Your Reply</h4>
+              <Button
+                variant={showAIComposer ? "default" : "outline"}
+                size="sm"
+                onClick={() => setShowAIComposer(!showAIComposer)}
+                className="gap-2"
+              >
+                <Wand2 className="h-4 w-4" />
+                {showAIComposer ? "Hide AI" : "AI Assist"}
+              </Button>
             </div>
+
+            {/* AI Reply Composer */}
+            <AnimatePresence>
+              {showAIComposer && (
+                <motion.div
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: "auto" }}
+                  exit={{ opacity: 0, height: 0 }}
+                  transition={{ duration: 0.2 }}
+                >
+                  <AIReplyComposer
+                    tweetContent={data.content}
+                    authorName={data.authorName}
+                    authorUsername={data.authorUsername}
+                    authorFollowers={data.authorFollowers}
+                    onSelectReply={handleAIReplySelect}
+                    className="rounded-lg border border-accent/20 bg-accent/5 p-4"
+                  />
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            {/* Manual Reply Angles (shown when AI is hidden) */}
+            {!showAIComposer && (
+              <div>
+                <p className="mb-2 text-xs text-foreground-muted">Quick reply angles:</p>
+                <div className="grid grid-cols-3 gap-2">
+                  {["Value add", "Share credibility", "Contrarian take"].map((angle) => (
+                    <motion.div
+                      key={angle}
+                      whileHover={{ scale: 1.02 }}
+                      className="rounded-lg border border-surface-3 bg-surface-1 p-3 text-center text-sm text-foreground-muted cursor-pointer hover:border-accent/50 hover:text-foreground transition-colors"
+                    >
+                      {angle}
+                    </motion.div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
+
+          {/* Selected Reply Preview */}
+          {selectedReply && (
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="rounded-lg border border-success/30 bg-success/5 p-3"
+            >
+              <div className="mb-2 flex items-center justify-between">
+                <span className="text-xs font-medium text-success">Reply Ready</span>
+                <span className="text-xs text-foreground-muted">Copied to clipboard</span>
+              </div>
+              <p className="text-sm text-foreground">{selectedReply}</p>
+            </motion.div>
+          )}
 
           {/* Actions */}
           <div className="flex space-x-2 pt-2">
@@ -302,7 +368,12 @@ export function OpportunitySidePanel({
                 "flex-1 gap-2",
                 data.isReviveable && "bg-gradient-revive hover:opacity-90"
               )}
-              onClick={onReply}
+              onClick={() => {
+                // Open Twitter with reply
+                const tweetUrl = `https://twitter.com/intent/tweet?in_reply_to=${data.authorUsername}${selectedReply ? `&text=${encodeURIComponent(selectedReply)}` : ''}`
+                window.open(tweetUrl, "_blank")
+                onReply?.()
+              }}
             >
               <MessageSquare className="h-4 w-4" />
               {data.isReviveable ? 'Revive Now' : 'Reply Now'}

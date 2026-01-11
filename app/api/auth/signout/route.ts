@@ -1,11 +1,8 @@
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs'
-import { cookies } from 'next/headers'
 import { NextResponse } from 'next/server'
-import type { Database } from '@/types/supabase'
+import { createRouteClient } from '@/lib/supabase/server'
 
 export async function POST() {
-  const cookieStore = await cookies()
-  const supabase = createRouteHandlerClient<Database>({ cookies: () => cookieStore })
+  const supabase = await createRouteClient()
   await supabase.auth.signOut()
   return NextResponse.json({ success: true })
 }

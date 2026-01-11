@@ -4,7 +4,6 @@ import {
   calculateDecayMetrics,
   getDecayMetrics,
   predictRevivalSuccess,
-  getReviveableOpportunities,
 } from '@/lib/attention-decay'
 
 export async function GET(
@@ -13,13 +12,16 @@ export async function GET(
 ) {
   try {
     const { id } = await params
+    const supabase = await createRouteClient()
 
     // Check if opportunity exists
-    const candidateTweet = await prisma.candidateTweet.findUnique({
-      where: { id },
-    })
+    const { data: candidateTweet, error } = await (supabase
+      .from('candidate_tweets')
+      .select('id') as any)
+      .eq('id', id)
+      .single()
 
-    if (!candidateTweet) {
+    if (error || !candidateTweet) {
       return NextResponse.json(
         { error: 'Opportunity not found' },
         { status: 404 }
@@ -81,13 +83,16 @@ export async function POST(
 ) {
   try {
     const { id } = await params
+    const supabase = await createRouteClient()
 
     // Check if opportunity exists
-    const candidateTweet = await prisma.candidateTweet.findUnique({
-      where: { id },
-    })
+    const { data: candidateTweet, error } = await (supabase
+      .from('candidate_tweets')
+      .select('id') as any)
+      .eq('id', id)
+      .single()
 
-    if (!candidateTweet) {
+    if (error || !candidateTweet) {
       return NextResponse.json(
         { error: 'Opportunity not found' },
         { status: 404 }

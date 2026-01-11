@@ -29,7 +29,7 @@ export default function OnboardingPage() {
           <div className="mb-8 text-center">
             <h1 className="text-3xl font-bold text-foreground">Welcome to EngageAlpha</h1>
             <p className="mt-2 text-foreground-muted">
-              Let's set up your decision intelligence engine
+              Let&apos;s set up your decision intelligence engine
             </p>
           </div>
 

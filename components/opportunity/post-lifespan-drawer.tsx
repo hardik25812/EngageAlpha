@@ -225,7 +225,7 @@ export function PostLifespanDrawer({
             <p className="text-xs text-foreground-muted">
               <strong className="text-foreground">How this works:</strong>{' '}
               We track engagement velocity over time to identify when attention is decaying.
-              Replying or quoting during the optimal window can restart the tweet's distribution
+              Replying or quoting during the optimal window can restart the tweet&apos;s distribution
               and capture remaining attention.
             </p>
           </div>
