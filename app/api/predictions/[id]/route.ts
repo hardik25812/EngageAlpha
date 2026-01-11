@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth'
-import { prisma } from '@/lib/prisma'
+import { createRouteClient } from '@/lib/supabase/server'
 import { predictOutcome } from '@/lib/prediction-engine'
 import type { OpportunityData } from '@/types'
 

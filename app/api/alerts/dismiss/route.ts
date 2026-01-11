@@ -1,26 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth'
-import { prisma } from '@/lib/prisma'
+import { createRouteClient } from '@/lib/supabase/server'
 import { dismissAlert, markAlertActedOn } from '@/lib/alert-engine'
 
 export async function POST(request: NextRequest) {
   try {
-    const session = await getServerSession()
-    if (!session?.user?.email) {
+    const supabase = await createRouteClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    
+    if (!user) {
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 401 }
-      )
-    }
-
-    const user = await prisma.user.findUnique({
-      where: { email: session.user.email },
-    })
-
-    if (!user) {
-      return NextResponse.json(
-        { error: 'User not found' },
-        { status: 404 }
       )
     }
 
@@ -35,9 +25,11 @@ export async function POST(request: NextRequest) {
     }
 
     // Verify alert belongs to user
-    const alert = await prisma.smartAlert.findUnique({
-      where: { id: alertId },
-    })
+    const { data: alert } = await supabase
+      .from('smart_alerts')
+      .select('*')
+      .eq('id', alertId)
+      .single()
 
     if (!alert) {
       return NextResponse.json(
@@ -46,7 +38,7 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    if (alert.userId !== user.id) {
+    if (alert.user_id !== user.id) {
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 403 }

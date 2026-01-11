@@ -5,7 +5,7 @@
  * with urgency levels and time windows.
  */
 
-import { prisma } from './prisma'
+import { createRouteClient } from './supabase/server'
 import { getDecayMetrics } from './attention-decay'
 import type {
   AlertType,
@@ -64,13 +64,14 @@ export async function generateSmartAlert(
   const { opportunity, userId } = context
 
   // Check if user already has max alerts
-  const activeAlertCount = await prisma.smartAlert.count({
-    where: {
-      userId,
-      dismissed: false,
-      expiresAt: { gte: new Date() },
-    },
-  })
+  const supabase = await createRouteClient()
+  const now = new Date().toISOString()
+  const { count: activeAlertCount } = await supabase
+    .from('smart_alerts')
+    .select('*', { count: 'exact', head: true })
+    .eq('user_id', userId)
+    .eq('dismissed', false)
+    .gte('expires_at', now)
 
   if (activeAlertCount >= ALERT_CONFIG.MAX_ACTIVE_ALERTS) {
     return null
@@ -99,19 +100,23 @@ export async function generateSmartAlert(
     : new Date(Date.now() + 60 * 60000) // Default 1 hour
 
   // Create alert in database
-  const alert = await prisma.smartAlert.create({
-    data: {
-      userId,
-      candidateTweetId: opportunity.id,
+  const { data: alert, error } = await supabase
+    .from('smart_alerts')
+    .insert({
+      user_id: userId,
+      candidate_tweet_id: opportunity.id,
       type: alertType,
       urgency,
       title,
       message,
-      optimalWindow,
-      closingWindow,
-      expiresAt,
-    },
-  })
+      optimal_window: optimalWindow,
+      closing_window: closingWindow,
+      expires_at: expiresAt.toISOString(),
+    })
+    .select()
+    .single()
+  
+  if (error || !alert) return null
 
   return {
     id: alert.id,
@@ -119,13 +124,13 @@ export async function generateSmartAlert(
     urgency: alert.urgency as AlertUrgency,
     title: alert.title,
     message: alert.message,
-    optimalWindow: alert.optimalWindow,
-    closingWindow: alert.closingWindow,
-    candidateTweetId: alert.candidateTweetId,
+    optimalWindow: alert.optimal_window,
+    closingWindow: alert.closing_window,
+    candidateTweetId: alert.candidate_tweet_id,
     dismissed: alert.dismissed,
-    actedOn: alert.actedOn,
-    createdAt: alert.createdAt,
-    expiresAt: alert.expiresAt,
+    actedOn: alert.acted_on,
+    createdAt: new Date(alert.created_at),
+    expiresAt: alert.expires_at ? new Date(alert.expires_at) : null,
   }
 }
 
@@ -276,9 +281,12 @@ export async function shouldTriggerAlert(
   userId: string
 ): Promise<boolean> {
   // Check user preferences
-  const preferences = await prisma.userPreferences.findUnique({
-    where: { userId },
-  })
+  const supabase = await createRouteClient()
+  const { data: preferences } = await supabase
+    .from('user_preferences')
+    .select('*')
+    .eq('user_id', userId)
+    .single()
 
   if (!preferences) return false
 
@@ -286,8 +294,8 @@ export async function shouldTriggerAlert(
   const now = new Date()
   const currentHour = now.getHours()
   if (
-    currentHour < preferences.timeWindowStart ||
-    currentHour >= preferences.timeWindowEnd
+    currentHour < preferences.time_window_start ||
+    currentHour >= preferences.time_window_end
   ) {
     return false
   }
@@ -296,14 +304,13 @@ export async function shouldTriggerAlert(
   const todayStart = new Date()
   todayStart.setHours(0, 0, 0, 0)
 
-  const todayAlertCount = await prisma.smartAlert.count({
-    where: {
-      userId,
-      createdAt: { gte: todayStart },
-    },
-  })
+  const { count: todayAlertCount } = await supabase
+    .from('smart_alerts')
+    .select('*', { count: 'exact', head: true })
+    .eq('user_id', userId)
+    .gte('created_at', todayStart.toISOString())
 
-  if (todayAlertCount >= preferences.maxAlertsPerDay) {
+  if ((todayAlertCount || 0) >= preferences.max_alerts_per_day) {
     return false
   }
 
@@ -313,14 +320,14 @@ export async function shouldTriggerAlert(
   }
 
   // Check for duplicate alert on same tweet
-  const existingAlert = await prisma.smartAlert.findFirst({
-    where: {
-      userId,
-      candidateTweetId: opportunity.id,
-      dismissed: false,
-      expiresAt: { gte: now },
-    },
-  })
+  const { data: existingAlert } = await supabase
+    .from('smart_alerts')
+    .select('id')
+    .eq('user_id', userId)
+    .eq('candidate_tweet_id', opportunity.id)
+    .eq('dismissed', false)
+    .gte('expires_at', now.toISOString())
+    .single()
 
   if (existingAlert) {
     return false
@@ -333,38 +340,34 @@ export async function shouldTriggerAlert(
  * Get active alerts for a user
  */
 export async function getActiveAlerts(userId: string): Promise<SmartAlertData[]> {
-  const now = new Date()
+  const supabase = await createRouteClient()
+  const now = new Date().toISOString()
 
-  const alerts = await prisma.smartAlert.findMany({
-    where: {
-      userId,
-      dismissed: false,
-      OR: [
-        { expiresAt: { gte: now } },
-        { expiresAt: null },
-      ],
-    },
-    orderBy: [
-      { urgency: 'asc' },  // CRITICAL first (alphabetically)
-      { createdAt: 'desc' },
-    ],
-    take: 20,
-  })
+  const { data: alerts } = await supabase
+    .from('smart_alerts')
+    .select('*')
+    .eq('user_id', userId)
+    .eq('dismissed', false)
+    .or(`expires_at.gte.${now},expires_at.is.null`)
+    .order('urgency', { ascending: true })
+    .order('created_at', { ascending: false })
+    .limit(20)
+  
+  if (!alerts) return []
 
-  const typedAlerts = alerts as SmartAlertDB[]
-  return typedAlerts.map((alert) => ({
+  return alerts.map((alert: any) => ({
     id: alert.id,
     type: alert.type as AlertType,
     urgency: alert.urgency as AlertUrgency,
     title: alert.title,
     message: alert.message,
-    optimalWindow: alert.optimalWindow,
-    closingWindow: alert.closingWindow,
-    candidateTweetId: alert.candidateTweetId,
+    optimalWindow: alert.optimal_window,
+    closingWindow: alert.closing_window,
+    candidateTweetId: alert.candidate_tweet_id,
     dismissed: alert.dismissed,
-    actedOn: alert.actedOn,
-    createdAt: alert.createdAt,
-    expiresAt: alert.expiresAt,
+    actedOn: alert.acted_on,
+    createdAt: new Date(alert.created_at),
+    expiresAt: alert.expires_at ? new Date(alert.expires_at) : null,
   }))
 }
 
@@ -375,33 +378,34 @@ export async function dismissAlert(
   alertId: string,
   feedback?: 'not_relevant' | 'too_late' | 'already_replied' | 'other'
 ): Promise<void> {
-  await prisma.smartAlert.update({
-    where: { id: alertId },
-    data: {
-      dismissed: true,
-      // Could log feedback for learning
-    },
-  })
+  const supabase = await createRouteClient()
+  
+  await supabase
+    .from('smart_alerts')
+    .update({ dismissed: true })
+    .eq('id', alertId)
 
   // If feedback provided, create learning signal
   if (feedback) {
-    const alert = await prisma.smartAlert.findUnique({
-      where: { id: alertId },
-    })
+    const { data: alert } = await supabase
+      .from('smart_alerts')
+      .select('*')
+      .eq('id', alertId)
+      .single()
 
     if (alert) {
-      await prisma.learningSignal.create({
-        data: {
-          userId: alert.userId,
-          signalType: 'alert_dismissed',
-          signalData: {
+      await supabase
+        .from('learning_signals')
+        .insert({
+          user_id: alert.user_id,
+          signal_type: 'alert_dismissed',
+          signal_data: {
             alertType: alert.type,
             feedback,
             urgency: alert.urgency,
           },
           confidence: 0.7,
-        },
-      })
+        })
     }
   }
 }
@@ -410,10 +414,11 @@ export async function dismissAlert(
  * Mark alert as acted on
  */
 export async function markAlertActedOn(alertId: string): Promise<void> {
-  await prisma.smartAlert.update({
-    where: { id: alertId },
-    data: { actedOn: true },
-  })
+  const supabase = await createRouteClient()
+  await supabase
+    .from('smart_alerts')
+    .update({ acted_on: true })
+    .eq('id', alertId)
 }
 
 /**

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { prisma } from '@/lib/prisma'
+import { createRouteClient } from '@/lib/supabase/server'
 import { captureEngagementSnapshot } from '@/lib/attention-decay'
 import { shouldCaptureSnapshot } from '@/lib/realtime-scoring'
 
