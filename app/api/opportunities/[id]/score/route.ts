@@ -3,7 +3,6 @@ import { createRouteClient } from '@/lib/supabase/server'
 import { scoringEngine } from '@/lib/scoring-engine'
 import { getDecayMetrics } from '@/lib/attention-decay'
 import { getRealtimeMetrics } from '@/lib/realtime-scoring'
-import { prisma } from '@/lib/prisma'
 
 export async function GET(
   request: NextRequest,
@@ -11,19 +10,16 @@ export async function GET(
 ) {
   try {
     const { id } = await params
+    const supabase = await createRouteClient()
 
     // Get the candidate tweet
-    const candidateTweet = await prisma.candidateTweet.findUnique({
-      where: { id },
-      include: {
-        scores: {
-          orderBy: { computedAt: 'desc' },
-          take: 1,
-        },
-      },
-    })
+    const { data: candidateTweet, error } = await (supabase
+      .from('candidate_tweets')
+      .select('*, scores(*)') as any)
+      .eq('id', id)
+      .single()
 
-    if (!candidateTweet) {
+    if (error || !candidateTweet) {
       return NextResponse.json(
         { error: 'Opportunity not found' },
         { status: 404 }
@@ -31,7 +27,10 @@ export async function GET(
     }
 
     // Get latest score
-    const latestScore = candidateTweet.scores[0]
+    const scores = (candidateTweet.scores || []).sort((a: any, b: any) =>
+      new Date(b.computed_at).getTime() - new Date(a.computed_at).getTime()
+    )
+    const latestScore = scores[0]
     if (!latestScore) {
       return NextResponse.json(
         { error: 'No score available for this opportunity' },
@@ -48,38 +47,38 @@ export async function GET(
     // Calculate enhanced score with decay and urgency
     const enhancedScore = scoringEngine.calculateEnhancedFinalScore(
       {
-        engagementRate: (latestScore.velocityRaw as any).engagementRate ?? 0,
-        growthRate: (latestScore.velocityRaw as any).growthRate ?? 0,
-        freshness: (latestScore.velocityRaw as any).freshness ?? 0,
-        score: latestScore.velocityScore,
+        engagementRate: latestScore.velocity_raw?.engagementRate ?? 0,
+        growthRate: latestScore.velocity_raw?.growthRate ?? 0,
+        freshness: latestScore.velocity_raw?.freshness ?? 0,
+        score: latestScore.velocity_score,
       },
       {
-        replyCount: (latestScore.saturationRaw as any).replyCount ?? 0,
-        replyGrowthRate: (latestScore.saturationRaw as any).replyGrowthRate ?? 0,
-        densityScore: (latestScore.saturationRaw as any).densityScore ?? 0,
-        score: latestScore.saturationScore,
+        replyCount: latestScore.saturation_raw?.replyCount ?? 0,
+        replyGrowthRate: latestScore.saturation_raw?.replyGrowthRate ?? 0,
+        densityScore: latestScore.saturation_raw?.densityScore ?? 0,
+        score: latestScore.saturation_score,
       },
       {
-        recentActivity: (latestScore.authorFatigueRaw as any).recentActivity ?? 0,
-        replyFrequency: (latestScore.authorFatigueRaw as any).replyFrequency ?? 0,
-        threadEngagement: (latestScore.authorFatigueRaw as any).threadEngagement ?? 0,
-        score: latestScore.authorFatigueScore,
+        recentActivity: latestScore.author_fatigue_raw?.recentActivity ?? 0,
+        replyFrequency: latestScore.author_fatigue_raw?.replyFrequency ?? 0,
+        threadEngagement: latestScore.author_fatigue_raw?.threadEngagement ?? 0,
+        score: latestScore.author_fatigue_score,
       },
       {
-        topicSimilarity: (latestScore.audienceOverlapRaw as any).topicSimilarity ?? 0,
-        keywordMatch: (latestScore.audienceOverlapRaw as any).keywordMatch ?? 0,
-        historicalConversion: (latestScore.audienceOverlapRaw as any).historicalConversion ?? 0,
-        score: latestScore.audienceOverlapScore,
+        topicSimilarity: latestScore.audience_overlap_raw?.topicSimilarity ?? 0,
+        keywordMatch: latestScore.audience_overlap_raw?.keywordMatch ?? 0,
+        historicalConversion: latestScore.audience_overlap_raw?.historicalConversion ?? 0,
+        score: latestScore.audience_overlap_score,
       },
       {
-        historicalPerformance: (latestScore.replyFitRaw as any).historicalPerformance ?? 0,
-        styleMatch: (latestScore.replyFitRaw as any).styleMatch ?? 0,
-        topicSuccess: (latestScore.replyFitRaw as any).topicSuccess ?? 0,
-        score: latestScore.replyFitScore,
+        historicalPerformance: latestScore.reply_fit_raw?.historicalPerformance ?? 0,
+        styleMatch: latestScore.reply_fit_raw?.styleMatch ?? 0,
+        topicSuccess: latestScore.reply_fit_raw?.topicSuccess ?? 0,
+        score: latestScore.reply_fit_score,
       },
       decayMetrics,
       {
-        createdAt: candidateTweet.createdAt,
+        createdAt: candidateTweet.created_at,
         velocityTrend: realtimeMetrics.velocity?.trend ?? 'stable',
         saturationTrend: realtimeMetrics.saturation.trend,
       }
@@ -108,12 +107,15 @@ export async function POST(
 ) {
   try {
     const { id } = await params
+    const supabase = await createRouteClient()
 
-    const candidateTweet = await prisma.candidateTweet.findUnique({
-      where: { id },
-    })
+    const { data: candidateTweet, error } = await (supabase
+      .from('candidate_tweets')
+      .select('*') as any)
+      .eq('id', id)
+      .single()
 
-    if (!candidateTweet) {
+    if (error || !candidateTweet) {
       return NextResponse.json(
         { error: 'Opportunity not found' },
         { status: 404 }
@@ -125,8 +127,8 @@ export async function POST(
       likes: 0, // Would come from Twitter API
       retweets: 0,
       replies: 0,
-      createdAt: candidateTweet.createdAt,
-      authorFollowers: candidateTweet.authorFollowers,
+      createdAt: candidateTweet.created_at,
+      authorFollowers: candidateTweet.author_followers,
     })
 
     // Recalculate saturation score
@@ -163,22 +165,22 @@ export async function POST(
     )
 
     // Store new score
-    await prisma.score.create({
-      data: {
-        candidateTweetId: id,
-        velocityScore: velocityScore.score,
-        velocityRaw: velocityScore as unknown as object,
-        saturationScore: saturationScore.score,
-        saturationRaw: saturationScore as unknown as object,
-        authorFatigueScore: authorFatigueScore.score,
-        authorFatigueRaw: authorFatigueScore as unknown as object,
-        audienceOverlapScore: audienceOverlapScore.score,
-        audienceOverlapRaw: audienceOverlapScore as unknown as object,
-        replyFitScore: replyFitScore.score,
-        replyFitRaw: replyFitScore as unknown as object,
-        finalScore: finalScore.finalScore,
-      },
-    })
+    await (supabase
+      .from('scores') as any)
+      .insert({
+        candidate_tweet_id: id,
+        velocity_score: velocityScore.score,
+        velocity_raw: velocityScore,
+        saturation_score: saturationScore.score,
+        saturation_raw: saturationScore,
+        author_fatigue_score: authorFatigueScore.score,
+        author_fatigue_raw: authorFatigueScore,
+        audience_overlap_score: audienceOverlapScore.score,
+        audience_overlap_raw: audienceOverlapScore,
+        reply_fit_score: replyFitScore.score,
+        reply_fit_raw: replyFitScore,
+        final_score: finalScore.finalScore,
+      })
 
     return NextResponse.json({
       id,

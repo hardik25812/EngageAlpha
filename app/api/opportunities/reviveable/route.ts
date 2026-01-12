@@ -5,23 +5,13 @@ import { getReviveableOpportunities } from '@/lib/attention-decay'
 export async function GET(request: NextRequest) {
   try {
     // Get user session
-    const session = await getServerSession()
-    if (!session?.user?.email) {
+    const supabase = await createRouteClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    
+    if (!user) {
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 401 }
-      )
-    }
-
-    // Get user ID
-    const user = await prisma.user.findUnique({
-      where: { email: session.user.email },
-    })
-
-    if (!user) {
-      return NextResponse.json(
-        { error: 'User not found' },
-        { status: 404 }
       )
     }
 
@@ -31,28 +21,28 @@ export async function GET(request: NextRequest) {
     // Enrich with tweet data
     const enrichedOpportunities = await Promise.all(
       reviveableOpportunities.map(async (opp) => {
-        const tweet = await prisma.candidateTweet.findUnique({
-          where: { id: opp.candidateTweetId },
-          include: {
-            scores: {
-              orderBy: { computedAt: 'desc' },
-              take: 1,
-            },
-          },
-        })
+        const { data: tweet } = await (supabase
+          .from('candidate_tweets')
+          .select('*, scores(*)') as any)
+          .eq('id', opp.candidateTweetId)
+          .single()
 
         if (!tweet) return null
 
+        const latestScore = (tweet.scores || []).sort((a: any, b: any) =>
+          new Date(b.computed_at).getTime() - new Date(a.computed_at).getTime()
+        )[0]
+
         return {
           id: opp.candidateTweetId,
-          tweetId: tweet.tweetId,
-          authorName: tweet.authorName,
-          authorUsername: tweet.authorUsername,
-          authorFollowers: tweet.authorFollowers,
-          authorImage: tweet.authorImage,
+          tweetId: tweet.tweet_id,
+          authorName: tweet.author_name,
+          authorUsername: tweet.author_username,
+          authorFollowers: tweet.author_followers,
+          authorImage: tweet.author_image,
           content: tweet.content,
-          createdAt: tweet.createdAt,
-          finalScore: tweet.scores[0]?.finalScore ?? 0,
+          createdAt: tweet.created_at,
+          finalScore: latestScore?.final_score ?? 0,
           reviveProbability: opp.reviveProbability,
           currentPhase: opp.currentPhase,
           reviveWindow: opp.reviveWindow,

@@ -9,45 +9,34 @@ export async function GET(
 ) {
   try {
     const { id } = await params
+    const supabase = await createRouteClient()
+    const { data: { user } } = await supabase.auth.getUser()
 
-    const session = await getServerSession()
-    if (!session?.user?.email) {
+    if (!user) {
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 401 }
       )
     }
 
-    const user = await prisma.user.findUnique({
-      where: { email: session.user.email },
-    })
-
-    if (!user) {
-      return NextResponse.json(
-        { error: 'User not found' },
-        { status: 404 }
-      )
-    }
-
     // Get the opportunity
-    const tweet = await prisma.candidateTweet.findUnique({
-      where: { id },
-      include: {
-        scores: {
-          orderBy: { computedAt: 'desc' },
-          take: 1,
-        },
-      },
-    })
+    const { data: tweet, error } = await (supabase
+      .from('candidate_tweets')
+      .select('*, scores(*)') as any)
+      .eq('id', id)
+      .single()
 
-    if (!tweet) {
+    if (error || !tweet) {
       return NextResponse.json(
         { error: 'Opportunity not found' },
         { status: 404 }
       )
     }
 
-    const score = tweet.scores[0]
+    const scores = (tweet.scores || []).sort((a: any, b: any) =>
+      new Date(b.computed_at).getTime() - new Date(a.computed_at).getTime()
+    )
+    const score = scores[0]
     if (!score) {
       return NextResponse.json(
         { error: 'No score available for this opportunity' },
@@ -58,19 +47,19 @@ export async function GET(
     // Build opportunity data
     const opportunity: OpportunityData = {
       id: tweet.id,
-      tweetId: tweet.tweetId,
-      authorName: tweet.authorName,
-      authorUsername: tweet.authorUsername,
-      authorFollowers: tweet.authorFollowers,
-      authorImage: tweet.authorImage ?? undefined,
+      tweetId: tweet.tweet_id,
+      authorName: tweet.author_name,
+      authorUsername: tweet.author_username,
+      authorFollowers: tweet.author_followers,
+      authorImage: tweet.author_image ?? undefined,
       content: tweet.content,
-      timestamp: tweet.createdAt,
-      velocityScore: score.velocityScore,
-      saturationScore: score.saturationScore,
-      authorActive: (score.authorFatigueRaw as any)?.replyFrequency > 50,
-      finalScore: score.finalScore,
-      velocityRaw: score.velocityRaw as any,
-      saturationRaw: score.saturationRaw as any,
+      timestamp: tweet.created_at,
+      velocityScore: score.velocity_score,
+      saturationScore: score.saturation_score,
+      authorActive: score.author_fatigue_raw?.replyFrequency > 50,
+      finalScore: score.final_score,
+      velocityRaw: score.velocity_raw,
+      saturationRaw: score.saturation_raw,
       explanation: '',
     }
 

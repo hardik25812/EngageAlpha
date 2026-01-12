@@ -21,7 +21,7 @@ const createStubModel = () => ({
   count: async () => 0,
 })
 
-export const prisma = {
+export const prisma: any = {
   // User learning
   userLearning: createStubModel(),
   learningSignal: createStubModel(),

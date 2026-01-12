@@ -5,10 +5,10 @@ import type { Database } from '@/types/supabase'
 
 export const createServerClient = async () => {
   const cookieStore = await cookies()
-  return createServerComponentClient<Database>({ cookies: () => cookieStore })
+  return createServerComponentClient<Database>({ cookies: () => cookieStore } as any)
 }
 
 export const createRouteClient = async () => {
   const cookieStore = await cookies()
-  return createRouteHandlerClient<Database>({ cookies: () => cookieStore })
+  return createRouteHandlerClient<Database>({ cookies: () => cookieStore } as any)
 }

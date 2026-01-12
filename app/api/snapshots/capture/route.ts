@@ -25,16 +25,20 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json()
 
+    const supabase = await createRouteClient()
+
     // Single tweet snapshot
     if (body.candidateTweetId && body.engagement) {
       const { candidateTweetId, engagement } = body
 
       // Verify tweet exists
-      const tweet = await prisma.candidateTweet.findUnique({
-        where: { id: candidateTweetId },
-      })
+      const { data: tweet, error } = await (supabase
+        .from('candidate_tweets')
+        .select('id') as any)
+        .eq('id', candidateTweetId)
+        .single()
 
-      if (!tweet) {
+      if (error || !tweet) {
         return NextResponse.json(
           { error: 'Tweet not found' },
           { status: 404 }
@@ -62,14 +66,11 @@ export async function POST(request: NextRequest) {
     // Batch snapshot for all active tweets
     if (body.batch) {
       // Get tweets that have been fetched in the last 24 hours
-      const recentTweets = await prisma.candidateTweet.findMany({
-        where: {
-          fetchedAt: {
-            gte: new Date(Date.now() - 24 * 60 * 60 * 1000),
-          },
-        },
-        take: 100,
-      })
+      const { data: recentTweets } = await (supabase
+        .from('candidate_tweets')
+        .select('id, tweet_id') as any)
+        .gte('fetched_at', new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString())
+        .limit(100)
 
       const results = {
         processed: 0,
@@ -77,7 +78,7 @@ export async function POST(request: NextRequest) {
         skipped: 0,
       }
 
-      for (const tweet of recentTweets) {
+      for (const tweet of (recentTweets || [])) {
         results.processed++
 
         const shouldCapture = await shouldCaptureSnapshot(tweet.id)
@@ -88,7 +89,7 @@ export async function POST(request: NextRequest) {
 
         // In a real implementation, you would fetch from Twitter API here
         // For now, we'll use mock data or skip if no engagement data
-        const mockEngagement = body.engagements?.[tweet.tweetId]
+        const mockEngagement = body.engagements?.[tweet.tweet_id]
         if (!mockEngagement) {
           results.skipped++
           continue
@@ -131,16 +132,18 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    const snapshots = await prisma.engagementSnapshot.findMany({
-      where: { candidateTweetId },
-      orderBy: { capturedAt: 'desc' },
-      take: 20,
-    })
+    const supabase = await createRouteClient()
+    const { data: snapshots } = await (supabase
+      .from('engagement_snapshots')
+      .select('*') as any)
+      .eq('candidate_tweet_id', candidateTweetId)
+      .order('captured_at', { ascending: false })
+      .limit(20)
 
     return NextResponse.json({
       candidateTweetId,
-      snapshots,
-      total: snapshots.length,
+      snapshots: snapshots || [],
+      total: (snapshots || []).length,
     })
   } catch (error) {
     console.error('Error fetching snapshots:', error)

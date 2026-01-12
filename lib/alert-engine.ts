@@ -66,9 +66,9 @@ export async function generateSmartAlert(
   // Check if user already has max alerts
   const supabase = await createRouteClient()
   const now = new Date().toISOString()
-  const { count: activeAlertCount } = await supabase
+  const { count: activeAlertCount } = await (supabase
     .from('smart_alerts')
-    .select('*', { count: 'exact', head: true })
+    .select('*', { count: 'exact', head: true }) as any)
     .eq('user_id', userId)
     .eq('dismissed', false)
     .gte('expires_at', now)
@@ -100,8 +100,8 @@ export async function generateSmartAlert(
     : new Date(Date.now() + 60 * 60000) // Default 1 hour
 
   // Create alert in database
-  const { data: alert, error } = await supabase
-    .from('smart_alerts')
+  const { data: alert, error } = await (supabase
+    .from('smart_alerts') as any)
     .insert({
       user_id: userId,
       candidate_tweet_id: opportunity.id,
@@ -282,9 +282,9 @@ export async function shouldTriggerAlert(
 ): Promise<boolean> {
   // Check user preferences
   const supabase = await createRouteClient()
-  const { data: preferences } = await supabase
+  const { data: preferences } = await (supabase
     .from('user_preferences')
-    .select('*')
+    .select('*') as any)
     .eq('user_id', userId)
     .single()
 
@@ -304,9 +304,9 @@ export async function shouldTriggerAlert(
   const todayStart = new Date()
   todayStart.setHours(0, 0, 0, 0)
 
-  const { count: todayAlertCount } = await supabase
+  const { count: todayAlertCount } = await (supabase
     .from('smart_alerts')
-    .select('*', { count: 'exact', head: true })
+    .select('*', { count: 'exact', head: true }) as any)
     .eq('user_id', userId)
     .gte('created_at', todayStart.toISOString())
 
@@ -320,9 +320,9 @@ export async function shouldTriggerAlert(
   }
 
   // Check for duplicate alert on same tweet
-  const { data: existingAlert } = await supabase
+  const { data: existingAlert } = await (supabase
     .from('smart_alerts')
-    .select('id')
+    .select('id') as any)
     .eq('user_id', userId)
     .eq('candidate_tweet_id', opportunity.id)
     .eq('dismissed', false)
@@ -343,9 +343,9 @@ export async function getActiveAlerts(userId: string): Promise<SmartAlertData[]>
   const supabase = await createRouteClient()
   const now = new Date().toISOString()
 
-  const { data: alerts } = await supabase
+  const { data: alerts } = await (supabase
     .from('smart_alerts')
-    .select('*')
+    .select('*') as any)
     .eq('user_id', userId)
     .eq('dismissed', false)
     .or(`expires_at.gte.${now},expires_at.is.null`)
@@ -380,22 +380,22 @@ export async function dismissAlert(
 ): Promise<void> {
   const supabase = await createRouteClient()
   
-  await supabase
-    .from('smart_alerts')
+  await (supabase
+    .from('smart_alerts') as any)
     .update({ dismissed: true })
     .eq('id', alertId)
 
   // If feedback provided, create learning signal
   if (feedback) {
-    const { data: alert } = await supabase
+    const { data: alert } = await (supabase
       .from('smart_alerts')
-      .select('*')
+      .select('*') as any)
       .eq('id', alertId)
       .single()
 
     if (alert) {
-      await supabase
-        .from('learning_signals')
+      await (supabase
+        .from('learning_signals') as any)
         .insert({
           user_id: alert.user_id,
           signal_type: 'alert_dismissed',
@@ -415,8 +415,8 @@ export async function dismissAlert(
  */
 export async function markAlertActedOn(alertId: string): Promise<void> {
   const supabase = await createRouteClient()
-  await supabase
-    .from('smart_alerts')
+  await (supabase
+    .from('smart_alerts') as any)
     .update({ acted_on: true })
     .eq('id', alertId)
 }
