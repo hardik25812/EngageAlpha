@@ -741,6 +741,7 @@ function SocialProofSection() {
 function WaitlistSection({ sectionRef }: { sectionRef: React.RefObject<HTMLElement | null> }) {
   const isInView = useInView(sectionRef, { once: true, margin: "-100px" })
   const [email, setEmail] = useState("")
+  const [name, setName] = useState("")
   const [status, setStatus] = useState<"idle" | "loading" | "success" | "error">("idle")
   const [errorMessage, setErrorMessage] = useState("")
 
@@ -755,7 +756,7 @@ function WaitlistSection({ sectionRef }: { sectionRef: React.RefObject<HTMLEleme
       const response = await fetch("/api/waitlist", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email }),
+        body: JSON.stringify({ email, name: name || undefined }),
       })
 
       const data = await response.json()
@@ -836,6 +837,16 @@ function WaitlistSection({ sectionRef }: { sectionRef: React.RefObject<HTMLEleme
                 onSubmit={handleSubmit}
                 className="max-w-md mx-auto"
               >
+                <div className="flex flex-col gap-3 mb-3">
+                  <input
+                    type="text"
+                    placeholder="Your name (optional)"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    disabled={status === "loading"}
+                    className="w-full h-12 px-5 bg-surface-2 border border-surface-3 text-foreground placeholder:text-foreground-muted rounded-xl focus:outline-none focus:ring-2 focus:ring-accent/50 focus:border-accent transition-all duration-300 disabled:opacity-50"
+                  />
+                </div>
                 <div className="flex flex-col sm:flex-row gap-3">
                   <input
                     type="email"

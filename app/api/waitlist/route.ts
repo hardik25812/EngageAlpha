@@ -143,7 +143,10 @@ export async function POST(request: NextRequest) {
                   </tr>
                   <tr>
                     <td align="center" style="padding-top: 32px;">
-                      <p style="margin: 0; color: #52525b; font-size: 12px;">
+                      <p style="margin: 0; color: #94969c; font-size: 14px; font-weight: 500;">
+                        - Hardik
+                      </p>
+                      <p style="margin: 16px 0 0 0; color: #52525b; font-size: 12px;">
                         EngageAlpha - Decision Intelligence for X
                       </p>
                       <p style="margin: 8px 0 0 0; color: #52525b; font-size: 12px;">
