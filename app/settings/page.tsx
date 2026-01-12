@@ -691,7 +691,7 @@ export default function SettingsPage() {
                       <div>
                         <h4 className="font-medium text-foreground">Set up your voice profile</h4>
                         <p className="mt-1 text-sm text-foreground-muted">
-                          We'll analyze your recent tweets to understand your writing style. This helps generate replies that sound authentically like you.
+                          We&apos;ll analyze your recent tweets to understand your writing style. This helps generate replies that sound authentically like you.
                         </p>
                         <Button size="sm" className="mt-3 gap-2">
                           <Zap className="h-4 w-4" />
