@@ -388,7 +388,7 @@ export function WaitlistExperience({ onBack }: WaitlistExperienceProps): ReactEl
                             M
                           </div>
                         </div>
-                        <span className="text-white/70 text-sm">~2k+ people already joined</span>
+                        <span className="text-white/70 text-sm">23 people already joined</span>
                       </motion.div>
 
                       <motion.div

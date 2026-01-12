@@ -1,15 +1,68 @@
 import { NextRequest, NextResponse } from 'next/server'
 import nodemailer from 'nodemailer'
+import { createClient } from '@supabase/supabase-js'
+
+// Initialize Supabase client with service role for admin operations
+const supabaseAdmin = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
+)
 
 export async function POST(request: NextRequest) {
   try {
-    const { email } = await request.json()
+    const body = await request.json()
+    const { 
+      email, 
+      name, 
+      twitterHandle,
+      referralSource,
+      utmSource,
+      utmMedium,
+      utmCampaign 
+    } = body
 
     if (!email || !email.includes('@')) {
       return NextResponse.json(
         { error: 'Valid email is required' },
         { status: 400 }
       )
+    }
+
+    // Get request metadata
+    const forwardedFor = request.headers.get('x-forwarded-for')
+    const ipAddress = forwardedFor ? forwardedFor.split(',')[0] : 'unknown'
+    const userAgent = request.headers.get('user-agent') || 'unknown'
+
+    // Store in Supabase
+    const { data: waitlistEntry, error: dbError } = await supabaseAdmin
+      .from('waitlist')
+      .upsert(
+        {
+          email: email.toLowerCase().trim(),
+          name: name || null,
+          twitter_handle: twitterHandle || null,
+          referral_source: referralSource || null,
+          utm_source: utmSource || null,
+          utm_medium: utmMedium || null,
+          utm_campaign: utmCampaign || null,
+          ip_address: ipAddress,
+          user_agent: userAgent,
+          metadata: {
+            signup_page: request.headers.get('referer') || 'direct',
+            timestamp: new Date().toISOString(),
+          },
+        },
+        { 
+          onConflict: 'email',
+          ignoreDuplicates: false 
+        }
+      )
+      .select()
+      .single()
+
+    if (dbError && dbError.code !== '23505') { // 23505 is unique violation (duplicate)
+      console.error('Database error:', dbError)
+      // Continue with email even if DB fails
     }
 
     // Create transporter with Gmail SMTP
@@ -61,18 +114,28 @@ export async function POST(request: NextRequest) {
                         <tr>
                           <td align="center" style="padding-bottom: 32px;">
                             <p style="margin: 0; color: #94969c; font-size: 16px; line-height: 1.6;">
-                              Thanks for joining the EngageAlpha waitlist. We're building decision intelligence for X (Twitter) - helping you reply to the right tweets, at the right time.
+                              Thanks for joining the EngageAlpha waitlist! We're building decision intelligence for X (Twitter) - helping you reply to the right tweets, at the right time.
                             </p>
                           </td>
                         </tr>
                         <tr>
-                          <td style="background-color: #0f0f12; border-radius: 12px; padding: 24px;">
+                          <td style="background-color: #0f0f12; border-radius: 12px; padding: 24px; margin-bottom: 24px;">
                             <h3 style="margin: 0 0 16px 0; color: #0ea5e9; font-size: 14px; text-transform: uppercase; letter-spacing: 1px;">What's next?</h3>
                             <ul style="margin: 0; padding-left: 20px; color: #94969c; font-size: 14px; line-height: 1.8;">
                               <li>We're opening access in small batches</li>
                               <li>Early users get priority access + founding member perks</li>
-                              <li>We'll email you when it's your turn</li>
+                              <li>We'll email you as soon as we're back with updates</li>
                             </ul>
+                          </td>
+                        </tr>
+                        <tr>
+                          <td style="background: linear-gradient(135deg, rgba(14, 165, 233, 0.1), rgba(139, 92, 246, 0.1)); border: 1px solid rgba(14, 165, 233, 0.3); border-radius: 12px; padding: 20px;">
+                            <p style="margin: 0; color: #0ea5e9; font-size: 14px; font-weight: 600; text-align: center;">
+                              📧 We'll share updates as soon as it gets back!
+                            </p>
+                            <p style="margin: 8px 0 0 0; color: #94969c; font-size: 13px; text-align: center;">
+                              Stay tuned for launch announcements and exclusive early access.
+                            </p>
                           </td>
                         </tr>
                       </table>

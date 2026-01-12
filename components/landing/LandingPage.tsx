@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button"
 import Link from "next/link"
 import { useState, useRef } from "react"
 import { motion, useInView } from "framer-motion"
+import { EngageAIDemo } from "./EngageAIDemo"
 
 // Animation variants
 const fadeInUp = {
@@ -913,7 +914,7 @@ function WaitlistSection({ sectionRef }: { sectionRef: React.RefObject<HTMLEleme
                   </div>
                 ))}
               </div>
-              <span className="text-foreground-muted text-sm">Join 2k+ founders on the waitlist</span>
+              <span className="text-foreground-muted text-sm">Join 23 founders on the waitlist</span>
             </motion.div>
           </div>
         </motion.div>
@@ -1006,6 +1007,7 @@ export default function LandingPage() {
         <ProblemSection />
         <InsightSection />
         <ProductPreviewSection />
+        <EngageAIDemo onGetAccess={handleGetAccess} />
         <HowItWorksSection sectionRef={howItWorksRef} />
         <SocialProofSection />
         <WaitlistSection sectionRef={waitlistRef} />
