@@ -3,6 +3,7 @@ import { createRouteClient } from '@/lib/supabase/server'
 import { scoringEngine } from '@/lib/scoring-engine'
 import { getDecayMetrics } from '@/lib/attention-decay'
 import { getRealtimeMetrics } from '@/lib/realtime-scoring'
+import { prisma } from '@/lib/prisma'
 
 export async function GET(
   request: NextRequest,
