@@ -169,8 +169,8 @@ export function EngageAIDemo({ onGetAccess }: { onGetAccess: () => void }) {
             AI-powered replies that <span className="gradient-text">actually work</span>
           </h2>
           <p className="text-lg text-foreground-muted max-w-2xl mx-auto">
-            Don't just find opportunities—know exactly what to say. Our AI analyzes the tweet, 
-            the author's style, and generates replies optimized for engagement.
+            Don&apos;t just find opportunities—know exactly what to say. Our AI analyzes the tweet, 
+            the author&apos;s style, and generates replies optimized for engagement.
           </p>
         </motion.div>
 
