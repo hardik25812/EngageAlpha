@@ -3,6 +3,7 @@
 import { ArrowRight, Zap, Clock, TrendingUp, Target, BarChart3, Bell, Activity, Sparkles, Loader2, CheckCircle } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import Link from "next/link"
+import Image from "next/image"
 import { useState, useRef } from "react"
 import { motion, useInView } from "framer-motion"
 import { EngageAIDemo } from "./EngageAIDemo"
@@ -948,9 +949,13 @@ function Footer() {
           whileHover={{ scale: 1.02 }}
           className="flex items-center gap-3"
         >
-          <div className="w-8 h-8 rounded-lg bg-gradient-primary flex items-center justify-center">
-            <TrendingUp className="h-4 w-4 text-white" />
-          </div>
+          <Image 
+            src="/logo.png" 
+            alt="EngageAlpha Logo" 
+            width={32} 
+            height={32} 
+            className="rounded-lg"
+          />
           <span className="font-semibold text-foreground">EngageAlpha</span>
           <span className="text-foreground-muted text-sm">Built for X</span>
         </motion.div>
@@ -995,9 +1000,13 @@ export default function LandingPage() {
             whileHover={{ scale: 1.05 }}
             className="flex items-center gap-3"
           >
-            <div className="w-8 h-8 rounded-lg bg-gradient-primary flex items-center justify-center">
-              <TrendingUp className="h-4 w-4 text-white" />
-            </div>
+            <Image 
+              src="/logo.png" 
+              alt="EngageAlpha Logo" 
+              width={32} 
+              height={32} 
+              className="rounded-lg"
+            />
             <span className="font-semibold text-foreground">EngageAlpha</span>
           </motion.div>
 

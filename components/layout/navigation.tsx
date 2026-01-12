@@ -1,6 +1,7 @@
 "use client"
 
 import Link from "next/link"
+import Image from "next/image"
 import { usePathname } from "next/navigation"
 import { Activity, Rss, Trophy, BookOpen, Zap, Settings } from "lucide-react"
 import { cn } from "@/lib/utils"
@@ -22,8 +23,15 @@ export function Navigation() {
       <div className="container mx-auto px-4">
         <div className="flex h-16 items-center justify-between">
           <div className="flex items-center space-x-8">
-            <Link href="/radar" className="text-xl font-bold text-foreground">
-              EngageAlpha
+            <Link href="/radar" className="flex items-center gap-2">
+              <Image 
+                src="/logo.png" 
+                alt="EngageAlpha Logo" 
+                width={32} 
+                height={32} 
+                className="rounded-lg"
+              />
+              <span className="text-xl font-bold text-foreground">EngageAlpha</span>
             </Link>
             <div className="flex space-x-1">
               {navigation.map((item) => {

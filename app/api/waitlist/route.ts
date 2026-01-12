@@ -93,7 +93,10 @@ export async function POST(request: NextRequest) {
                 <table width="600" cellpadding="0" cellspacing="0" style="max-width: 600px;">
                   <tr>
                     <td align="center" style="padding-bottom: 32px;">
-                      <span style="color: #e5e5e6; font-size: 24px; font-weight: 600;">EngageAlpha</span>
+                      <div style="display: flex; align-items: center; justify-content: center; gap: 12px;">
+                        <img src="https://engage-alpha5656.vercel.app/logo.png" alt="EngageAlpha Logo" width="40" height="40" style="border-radius: 8px;" />
+                        <span style="color: #e5e5e6; font-size: 24px; font-weight: 600;">EngageAlpha</span>
+                      </div>
                     </td>
                   </tr>
                   <tr>

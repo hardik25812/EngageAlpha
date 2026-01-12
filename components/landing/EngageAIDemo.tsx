@@ -1,7 +1,6 @@
 "use client"
 
 import { useState } from "react"
-import Image from "next/image"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { cn } from "@/lib/utils"
@@ -45,21 +44,24 @@ const sampleTweets = [
   {
     author: "Naval",
     username: "naval",
-    avatar: "https://pbs.twimg.com/profile_images/1735704764166418432/eZLBcyPF_400x400.jpg",
+    initial: "N",
+    bgColor: "from-cyan-500 to-blue-600",
     content: "The most important skill for getting rich is becoming a perpetual learner. You have to know how to learn anything you want to learn.",
     followers: "2.1M",
   },
   {
     author: "Paul Graham",
     username: "paulg",
-    avatar: "https://pbs.twimg.com/profile_images/1883073388819890176/8bIUUHqR_400x400.jpg",
+    initial: "P",
+    bgColor: "from-orange-500 to-red-600",
     content: "The best founders are relentlessly resourceful. They keep trying new things until something works.",
     followers: "1.8M",
   },
   {
     author: "Sahil Bloom",
     username: "SahilBloom",
-    avatar: "https://pbs.twimg.com/profile_images/1858543849391878144/xKz8pUHu_400x400.jpg",
+    initial: "S",
+    bgColor: "from-purple-500 to-pink-600",
     content: "The most successful people I know have one thing in common: They're obsessed with learning from their failures.",
     followers: "1.5M",
   },
@@ -209,13 +211,11 @@ export function EngageAIDemo({ onGetAccess }: { onGetAccess: () => void }) {
                   )}
                 >
                   <div className="flex items-start gap-3">
-                    <Image 
-                      src={tweet.avatar} 
-                      alt={`${tweet.author} avatar`}
-                      width={40}
-                      height={40}
-                      className="w-10 h-10 rounded-full object-cover"
-                    />
+                    <div 
+                      className={`w-10 h-10 rounded-full bg-gradient-to-br ${tweet.bgColor} flex items-center justify-center text-white font-semibold text-sm`}
+                    >
+                      {tweet.initial}
+                    </div>
                     <div className="flex-1">
                       <div className="flex items-center gap-2">
                         <span className="font-semibold text-foreground">{tweet.author}</span>
